@@ -503,3 +503,19 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint16 sys_opndfd(void)
+{
+  struct proc *p = myproc();
+  uint16 result = 0;
+
+  for (int i = 0; i < NOFILE; i++)
+  {
+    if (p->ofile[i] != 0)
+    {
+      result |= (1 << i);
+    }
+  }
+
+  return result;
+}

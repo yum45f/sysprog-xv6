@@ -135,6 +135,7 @@ UPROGS=\
 	$U/_typecho\
 	$U/_prime\
 	$U/_pwd\
+	$U/_chkopndfd\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
