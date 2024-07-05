@@ -14,22 +14,31 @@ int sys_login(void)
   char username[MAX_USERNAME];
   char password[MAX_PASSWORD];
 
-  struct user u;
   if (argstr(0, username, MAX_USERNAME) < 0 || argstr(1, password, MAX_PASSWORD) < 0)
     return -1;
 
-  if (usrauthenticate(username, password) == 0)
+  int result = usrauthenticate(username, password);
+  printf("login: result: %d\n", result);
+  if (result < 0)
   {
-    getusr(username, &u);
-    myproc()->uid = u.uid;
-    return 0;
+    printf("login: authentication failed\n");
+    return -1;
   }
 
-  return -1;
+  struct proc *p = myproc();
+  p->uid = result;
+  return 0;
 }
 
 int sys_addusr(void)
 {
+  struct proc *p = myproc();
+  if (p->uid != 0)
+  {
+    printf("addusr: only root can add user\n");
+    return -1;
+  }
+
   char username[MAX_USERNAME];
   char password[MAX_PASSWORD];
 
@@ -45,4 +54,10 @@ int sys_addusr(void)
 int sys_reloadusrs(void)
 {
   return loadusrs();
+}
+
+int sys_getuid(void)
+{
+  struct proc *p = myproc();
+  return p->uid;
 }

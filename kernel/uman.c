@@ -19,45 +19,80 @@ struct user users[MAX_USERS];
 // return -1 on failure
 int create_savefile()
 {
-  begin_op();
   struct dirent de;
   struct inode *ip, *root;
+  begin_op();
   root = namei("/");
   if (root == 0)
   {
-    end_op();
     printf("failed to get root inode\n");
     return -1;
   }
 
-  ilock(root);
-
+  int found = 0;
   for (int off = 0; off < root->size; off += sizeof(de))
   {
     if (readi(root, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
     {
-      iunlockput(root);
-      end_op();
       printf("failed to read root inode\n");
       return -1;
     }
+
+    if (strncmp(de.name, ".", DIRSIZ) == 0)
+      continue;
+
+    if (strncmp(de.name, "..", DIRSIZ) == 0)
+      continue;
+
+    // skip empty name entries
+    if (de.name[0] == 0)
+      continue;
 
     if (de.inum == 0)
       continue;
 
     if (strncmp(de.name, "users", DIRSIZ) == 0)
     {
-      iunlockput(root);
-      end_op();
-      return 0;
+      printf("users savefile found\n");
+      found = 1;
+      continue;
     }
+
+    char name[DIRSIZ + 1];
+    name[0] = '/';
+    strncpy(name + 1, de.name, DIRSIZ);
+
+    struct inode *i = namei(name);
+    if (i == 0)
+    {
+      end_op();
+      printf("failed to get inode\n");
+      return -1;
+    }
+
+    ilock(i);
+
+    if (i->type != T_FILE)
+    {
+      iunlockput(i);
+      continue;
+    }
+
+    i->mode = 0777;
+    iupdate(i);
+    iunlockput(i);
+  }
+
+  if (found)
+  {
+    end_op();
+    return 0;
   }
 
   printf("creating users savefile\n");
   ip = ialloc(root->dev, T_FILE);
   if (ip == 0)
   {
-    iunlockput(root);
     end_op();
     printf("failed to ialloc\n");
     return -1;
@@ -77,13 +112,10 @@ int create_savefile()
   if (dirlink(root, "users", ip->inum) < 0)
   {
     iput(ip);
-    iunlockput(root);
     end_op();
     printf("failed to dirlink\n");
     return -1;
   }
-
-  iunlockput(root);
 
   for (int i = 0; i < MAX_USERS; i++)
   {
@@ -186,6 +218,7 @@ int getusr(char username[MAX_USERNAME], struct user *user)
 {
   if (loadusrs() < 0)
   {
+    printf("failed to load users\n");
     return -1;
   }
 
@@ -196,7 +229,6 @@ int getusr(char username[MAX_USERNAME], struct user *user)
 
     if (strncmp(users[i].username, username, MAX_USERNAME) == 0)
     {
-      printf("user getusr %s found\n", username);
       *user = users[i];
       return 0;
     }
@@ -205,32 +237,33 @@ int getusr(char username[MAX_USERNAME], struct user *user)
   return -1;
 }
 
+// return uid on success or -1 on failure
 int usrauthenticate(char username[MAX_USERNAME], char password[MAX_PASSWORD])
 {
   printf("authenticating user %s\n", username);
   struct user *u = (struct user *)kalloc();
   if (getusr(username, u) < 0)
   {
+    printf("user not found\n");
     kfree((char *)u);
     return -1;
   }
   if (u == 0)
   {
+    printf("failed to allocate memory\n");
     kfree((char *)u);
     return -1;
   }
-  printf("user usrauthenticate %s found\n", u->username);
 
-  printf("username: %s\n", u->username);
-  printf("password: %s\n", u->password);
-
-  printf("username: %s\n", username);
-  printf("password: %s\n", password);
+  printf("uid: %d\n", u->uid);
+  printf("username: %d\n", strncmp(u->username, username, MAX_USERNAME));
+  printf("password: %d\n", strncmp(u->password, password, MAX_PASSWORD));
 
   if (strncmp(u->password, password, MAX_PASSWORD) == 0)
   {
+    int uid = u->uid;
     kfree((char *)u);
-    return 0;
+    return uid;
   }
 
   kfree((char *)u);
@@ -246,12 +279,31 @@ int addusr(char username[MAX_USERNAME], char password[MAX_PASSWORD])
     return -1;
   }
 
-  if (loadusrs(users) < 0)
+  if (loadusrs() < 0)
   {
     return -1;
   }
 
-  for (int i = 0; i < MAX_USERS; i++)
+  if (users[0].status == USER_INACTIVE)
+  {
+    struct user *u = &users[0];
+    u->uid = 0;
+    u->status = USER_ACTIVE;
+    strncpy(u->username, username, MAX_USERNAME);
+    strncpy(u->password, password, MAX_PASSWORD);
+
+    printf("usr %s %d %d\n", users[0].username, users[0].uid, users[0].status);
+
+    if (saveusrs() < 0)
+    {
+      printf("failed to save users\n");
+      return -1;
+    }
+
+    return u->uid;
+  }
+
+  for (int i = 1; i < MAX_USERS; i++)
   {
     if (users[i].uid == 0)
     {
@@ -261,8 +313,9 @@ int addusr(char username[MAX_USERNAME], char password[MAX_PASSWORD])
       strncpy(u->username, username, MAX_USERNAME);
       strncpy(u->password, password, MAX_PASSWORD);
 
-      if (saveusrs(users) < 0)
+      if (saveusrs() < 0)
       {
+        printf("failed to save users\n");
         return -1;
       }
       printf("user %s added\n", username);
@@ -273,34 +326,9 @@ int addusr(char username[MAX_USERNAME], char password[MAX_PASSWORD])
   return -1;
 }
 
-// delete a user from the user table
-// return the uid of the deleted user
-int delusr(char *username)
+int getusername(int uid, char username[MAX_USERNAME])
 {
-  struct user users[MAX_USERS];
-  loadusrs(users);
-
-  for (int i = 0; i < MAX_USERS; i++)
-  {
-    if (strncmp(users[i].username, username, MAX_USERNAME) == 0)
-    {
-      users[i].status = USER_INACTIVE;
-
-      if (saveusrs(users) < 0)
-      {
-        return -1;
-      }
-      return users[i].uid;
-    }
-  }
-
-  return -1;
-}
-
-int getusername(int uid, char *username)
-{
-  struct user users[MAX_USERS];
-  loadusrs(users);
+  loadusrs();
 
   for (int i = 0; i < MAX_USERS; i++)
   {
@@ -308,6 +336,21 @@ int getusername(int uid, char *username)
     {
       strncpy(username, users[i].username, MAX_USERNAME);
       return 0;
+    }
+  }
+
+  return -1;
+}
+
+int getuid(char username[MAX_USERNAME])
+{
+  loadusrs();
+
+  for (int i = 0; i < MAX_USERS; i++)
+  {
+    if (strncmp(users[i].username, username, MAX_USERNAME) == 0)
+    {
+      return users[i].uid;
     }
   }
 

@@ -67,10 +67,7 @@ int main(void)
         continue;
       }
 
-      printf("success, welcome %s\n", username);
-
-      exec("sh", argv);
-      exit(0);
+      break;
     }
 
     printf("login\n");
@@ -87,14 +84,13 @@ int main(void)
     if (login(username, password) < 0)
     {
       printf("failed to login\n");
+      continue;
     }
-    else
-    {
-      printf("success, welcome %s\n", username);
-    }
-
-    exec("sh", argv);
-
-    exit(0);
+    printf("login success\n");
+    break;
   }
+
+  printf("success, welcome %s\n", username);
+  exec("sh", argv);
+  exit(0);
 }
