@@ -718,3 +718,18 @@ nameiparent(char *path, char *name)
 {
   return namex(path, 1, name);
 }
+
+int checkfperm(struct inode *ip, int mode)
+{
+  struct proc *p = myproc();
+  if (p->uid == 0)
+    return 0;
+
+  if (p->uid != ip->uid)
+    return -1;
+
+  if ((ip->mode & mode) == mode)
+    return -1;
+
+  return 0;
+}

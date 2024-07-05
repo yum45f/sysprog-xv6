@@ -37,3 +37,6 @@ entry("sbrk");
 entry("sleep");
 entry("uptime");
 entry("opndfd");
+entry("login");
+entry("addusr");
+entry("reloadusrs");

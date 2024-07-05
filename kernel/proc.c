@@ -239,6 +239,7 @@ void userinit(void)
 
   p = allocproc();
   initproc = p;
+  p->uid = 0;
 
   // allocate one user page and copy initcode's instructions
   // and data into it.
@@ -251,7 +252,6 @@ void userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
   p->state = RUNNABLE;
 
   release(&p->lock);
@@ -294,6 +294,7 @@ int fork(void)
     return -1;
   }
 
+  np->uid = p->uid;
   // Copy user memory from parent to child.
   if (uvmcopy(p->pagetable, np->pagetable, p->sz) < 0)
   {

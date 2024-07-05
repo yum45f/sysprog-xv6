@@ -16,21 +16,47 @@ void main()
     printf("\n");
     printf("xv6 kernel is booting\n");
     printf("\n");
-    kinit();            // physical page allocator
-    kvminit();          // create kernel page table
-    kvminithart();      // turn on paging
-    procinit();         // process table
-    trapinit();         // trap vectors
-    trapinithart();     // install kernel trap vector
-    plicinit();         // set up interrupt controller
-    plicinithart();     // ask PLIC for device interrupts
-    binit();            // buffer cache
-    iinit();            // inode table
-    fileinit();         // file table
+
+    kinit(); // physical page allocator
+    printf("kinit done\n");
+
+    kvminit(); // create kernel page table
+    printf("kvminit done\n");
+
+    kvminithart(); // turn on paging
+    printf("kvminithart done\n");
+
+    procinit(); // process table
+    printf("procinit done\n");
+
+    trapinit(); // trap vectors
+    printf("trapinit done\n");
+
+    trapinithart(); // install kernel trap vector
+    printf("trapinithart done\n");
+
+    plicinit(); // set up interrupt controller
+    printf("plicinit done\n");
+
+    plicinithart(); // ask PLIC for device interrupts
+    printf("plicinithart done\n");
+
+    binit(); // buffer cache
+    printf("binit done\n");
+
+    iinit(); // inode table
+    printf("iinit done\n");
+
+    fileinit(); // file table
+    printf("fileinit done\n");
+
     virtio_disk_init(); // emulated hard disk
-    userinit();         // first user process
+    printf("virtio_disk_init done\n");
+
+    userinit(); // first user process
     __sync_synchronize();
     started = 1;
+    printf("CPU 0 initialization complete\n");
   }
   else
   {

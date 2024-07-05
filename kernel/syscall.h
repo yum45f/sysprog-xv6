@@ -21,3 +21,6 @@
 #define SYS_mkdir 20
 #define SYS_close 21
 #define SYS_opndfd 22
+#define SYS_login 23
+#define SYS_addusr 24
+#define SYS_reloadusrs 25

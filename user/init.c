@@ -25,7 +25,6 @@ int main(void)
 
   for (;;)
   {
-    printf("init: starting sh\n");
     pid = fork();
     if (pid < 0)
     {
@@ -34,7 +33,7 @@ int main(void)
     }
     if (pid == 0)
     {
-      exec("sh", argv);
+      exec("login", argv);
       printf("init: exec sh failed\n");
       exit(1);
     }

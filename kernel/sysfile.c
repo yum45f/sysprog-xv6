@@ -78,6 +78,10 @@ sys_read(void)
   argint(2, &n);
   if (argfd(0, 0, &f) < 0)
     return -1;
+
+  if (checkfperm(f->ip, O_RDONLY) < 0)
+    return -1;
+
   return fileread(f, p, n);
 }
 
@@ -91,6 +95,9 @@ sys_write(void)
   argaddr(1, &p);
   argint(2, &n);
   if (argfd(0, 0, &f) < 0)
+    return -1;
+
+  if (checkfperm(f->ip, O_WRONLY) < 0)
     return -1;
 
   return filewrite(f, p, n);
@@ -282,6 +289,8 @@ create(char *path, short type, short major, short minor)
   ip->major = major;
   ip->minor = minor;
   ip->nlink = 1;
+  ip->uid = myproc()->uid;
+  ip->mode = 600;
   iupdate(ip);
 
   if (type == T_DIR)
@@ -346,6 +355,14 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
+
+    if (checkfperm(ip, omode & (O_RDONLY | O_WRONLY | O_RDWR)) < 0)
+    {
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+
     if (ip->type == T_DIR && omode != O_RDONLY)
     {
       iunlockput(ip);
@@ -554,4 +571,74 @@ uint16 sys_opndfd(void)
   }
 
   return result;
+}
+
+int sys_chmod(void)
+{
+  char path[MAXPATH];
+  int mode;
+  struct inode *ip;
+
+  if (argstr(0, path, MAXPATH) < 0)
+  {
+    return -1;
+  }
+  argint(1, &mode);
+
+  begin_op();
+  if ((ip = namei(path)) == 0)
+  {
+    end_op();
+    return -1;
+  }
+
+  ilock(ip);
+  if (ip->uid != myproc()->uid)
+  {
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  ip->mode = mode;
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+
+  return 0;
+}
+
+int sys_chown(void)
+{
+  char path[MAXPATH];
+  int uid;
+  struct inode *ip;
+
+  if (argstr(0, path, MAXPATH) < 0)
+  {
+    return -1;
+  }
+  argint(1, &uid);
+
+  begin_op();
+  if ((ip = namei(path)) == 0)
+  {
+    end_op();
+    return -1;
+  }
+
+  ilock(ip);
+  if (ip->uid != myproc()->uid)
+  {
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
+  ip->uid = uid;
+  iupdate(ip);
+  iunlockput(ip);
+  end_op();
+
+  return 0;
 }

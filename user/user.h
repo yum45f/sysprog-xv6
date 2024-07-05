@@ -23,6 +23,9 @@ char *sbrk(int);
 int sleep(int);
 int uptime(void);
 uint16 opndfd(void);
+int login(const char *, const char *);
+int addusr(const char *, const char *);
+int reloadusrs(void);
 
 // ulib.c
 int stat(const char *, struct stat *);

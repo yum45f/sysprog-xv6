@@ -8,6 +8,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct user;
 
 // bio.c
 void binit(void);
@@ -53,6 +54,7 @@ int readi(struct inode *, int, uint64, uint, uint);
 void stati(struct inode *, struct stat *);
 int writei(struct inode *, int, uint64, uint, uint);
 void itrunc(struct inode *);
+int checkfperm(struct inode *, int);
 
 // ramdisk.c
 void ramdiskinit(void);
@@ -187,3 +189,10 @@ void virtio_disk_intr(void);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
+
+// uman.c
+int loadusrs();
+int saveusrs();
+int addusr(char[32], char[64]);
+int getusr(char[32], struct user *);
+int usrauthenticate(char[32], char[64]);
