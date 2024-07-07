@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "defs.h"
 #include "elf.h"
+#include "fcntl.h"
 
 static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
 
@@ -40,7 +41,7 @@ int exec(char *path, char **argv)
   ilock(ip);
 
   // check sufficient permissions
-  if (checkfperm(ip, 0111) < 0)
+  if (checkfperm(ip, S_IXUSR) < 0)
   {
     printf("exec: insufficient permissions\n");
     goto bad;

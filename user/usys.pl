@@ -40,3 +40,6 @@ entry("opndfd");
 entry("login");
 entry("addusr");
 entry("reloadusrs");
+entry("getusr");
+entry("chmod");
+entry("chown");

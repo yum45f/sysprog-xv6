@@ -34,7 +34,7 @@ int main(void)
     if (pid == 0)
     {
       exec("login", argv);
-      printf("init: exec sh failed\n");
+      printf("init: exec login failed\n");
       exit(1);
     }
 

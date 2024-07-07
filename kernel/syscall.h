@@ -24,3 +24,6 @@
 #define SYS_login 23
 #define SYS_addusr 24
 #define SYS_reloadusrs 25
+#define SYS_getusr 26
+#define SYS_chmod 27
+#define SYS_chown 28

@@ -216,9 +216,6 @@ int usrauthenticate(char username[MAX_USERNAME], char password[MAX_PASSWORD])
     return -1;
   }
 
-  printf("length of u->password: %d\n", strlen(u->password));
-  printf("length of password: %d\n", strlen(password));
-
   if (strlen(u->password) == strlen(password) && strncmp(u->password, password, MAX_PASSWORD) == 0)
   {
     int uid = u->uid;
@@ -306,6 +303,9 @@ int getuid(char username[MAX_USERNAME])
 
   for (int i = 0; i < MAX_USERS; i++)
   {
+    if (users[i].status == USER_INACTIVE)
+      continue;
+
     if (strncmp(users[i].username, username, MAX_USERNAME) == 0)
     {
       return users[i].uid;

@@ -4,7 +4,7 @@
 #define O_CREATE 0x200
 #define O_TRUNC 0x400
 
-#define S_IRUSR 01 // Readable by owner
-#define S_IWUSR 02 // Writable by owner
-#define S_IXUSR 04 // Executable by owner
+#define S_IRUSR 0b1
+#define S_IWUSR 0b10
+#define S_IXUSR 0b100
 #define S_IRWXU (S_IRUSR | S_IWUSR | S_IXUSR)

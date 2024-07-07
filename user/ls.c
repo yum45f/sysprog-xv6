@@ -69,8 +69,19 @@ void ls(char *path)
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
+
+      // convert mode to octal
+      int mode = st.mode;
+      int octal = 0, i = 1;
+      while (mode != 0)
+      {
+        octal += (mode % 8) * i;
+        mode /= 8;
+        i *= 10;
+      }
+
       // name type inum size owner mode
-      printf("%s %d %d %d %d %d\n", fmtname(buf), st.type, st.ino, st.size, st.uid, st.mode);
+      printf("%s %d %d %d %d %d\n", fmtname(buf), st.type, st.ino, st.size, st.uid, octal);
     }
     break;
   }

@@ -1,4 +1,5 @@
 struct stat;
+struct user;
 
 // system calls
 int fork(void);
@@ -26,6 +27,9 @@ uint16 opndfd(void);
 int login(const char *, const char *);
 int addusr(const char *, const char *);
 int reloadusrs(void);
+int getusr(struct user *);
+int chmod(const char *, int);
+int chown(const char *, char *);
 
 // ulib.c
 int stat(const char *, struct stat *);

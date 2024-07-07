@@ -70,6 +70,16 @@ printoct(uint64 x)
     consputc('0' + (x >> (sizeof(uint64) * 8 - 3)));
 }
 
+static void
+printbin(uint64 x)
+{
+  int i;
+  consputc('0');
+  consputc('b');
+  for (i = 0; i < (sizeof(uint64) * 8); i++, x <<= 1)
+    consputc('0' + (x >> (sizeof(uint64) * 8 - 1)));
+}
+
 // Print to the console. only understands %d, %x, %p, %s.
 void printf(char *fmt, ...)
 {
@@ -108,6 +118,9 @@ void printf(char *fmt, ...)
       break;
     case 'o':
       printoct(va_arg(ap, uint64));
+      break;
+    case 'b':
+      printbin(va_arg(ap, uint64));
       break;
     case 's':
       if ((s = va_arg(ap, char *)) == 0)

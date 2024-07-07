@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "uman.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -79,8 +80,12 @@ sys_read(void)
   if (argfd(0, 0, &f) < 0)
     return -1;
 
-  if (checkfperm(f->ip, O_RDONLY) < 0)
+  // read perm check
+  if (checkfperm(f->ip, S_IRUSR) < 0)
+  {
+    printf("read: permission denied\n");
     return -1;
+  }
 
   return fileread(f, p, n);
 }
@@ -97,8 +102,11 @@ sys_write(void)
   if (argfd(0, 0, &f) < 0)
     return -1;
 
-  if (checkfperm(f->ip, O_WRONLY) < 0)
+  if (checkfperm(f->ip, S_IWUSR) < 0)
+  {
+    printf("write: permission denied\n");
     return -1;
+  }
 
   return filewrite(f, p, n);
 }
@@ -290,7 +298,7 @@ create(char *path, short type, short major, short minor)
   ip->minor = minor;
   ip->nlink = 1;
   ip->uid = myproc()->uid;
-  ip->mode = 600;
+  ip->mode = 0733;
   iupdate(ip);
 
   if (type == T_DIR)
@@ -340,10 +348,31 @@ sys_open(void)
 
   if (omode & O_CREATE)
   {
+    // check permission for parent directory
+    char name[DIRSIZ];
+    struct inode *dp;
+    if ((dp = nameiparent(path, name)) == 0)
+    {
+      end_op();
+      printf("open: parent directory not found\n");
+      return -1;
+    }
+
+    ilock(dp);
+    if (checkfperm(dp, S_IWUSR) < 0)
+    {
+      iunlockput(dp);
+      end_op();
+      printf("open: permission denied; path = %s\n", path);
+      return -1;
+    }
+    iunlockput(dp);
+
     ip = create(path, T_FILE, 0, 0);
     if (ip == 0)
     {
       end_op();
+      printf("open: create failed\n");
       return -1;
     }
   }
@@ -356,10 +385,19 @@ sys_open(void)
     }
     ilock(ip);
 
-    if (checkfperm(ip, omode & (O_RDONLY | O_WRONLY | O_RDWR)) < 0)
+    ushort perm;
+    if (omode & O_RDWR)
+      perm = S_IRUSR | S_IWUSR; // Read and write
+    else if (omode & O_WRONLY)
+      perm = S_IWUSR; // Write only
+    else
+      perm = S_IRUSR; // Read only
+
+    if (checkfperm(ip, perm) < 0) // check permission
     {
       iunlockput(ip);
       end_op();
+      printf("open: permission denied; path = %s\n", path);
       return -1;
     }
 
@@ -367,6 +405,7 @@ sys_open(void)
     {
       iunlockput(ip);
       end_op();
+      printf("open: not a directory\n");
       return -1;
     }
   }
@@ -375,6 +414,7 @@ sys_open(void)
   {
     iunlockput(ip);
     end_op();
+    printf("open: invalid device\n");
     return -1;
   }
 
@@ -384,6 +424,7 @@ sys_open(void)
       fileclose(f);
     iunlockput(ip);
     end_op();
+    printf("open: file allocation failed\n");
     return -1;
   }
 
@@ -611,24 +652,37 @@ int sys_chmod(void)
 int sys_chown(void)
 {
   char path[MAXPATH];
-  int uid;
+  char owner[MAX_USERNAME];
   struct inode *ip;
 
   if (argstr(0, path, MAXPATH) < 0)
   {
+    printf("chown: invalid path\n");
     return -1;
   }
-  argint(1, &uid);
+  if (argstr(1, owner, MAX_USERNAME) < 0)
+  {
+    printf("chown: invalid owner\n");
+    return -1;
+  }
+
+  int uid = getuid(owner);
+  if (uid < 0)
+  {
+    printf("chown: user not found\n");
+    return -1;
+  }
 
   begin_op();
   if ((ip = namei(path)) == 0)
   {
     end_op();
+    printf("chown: file not found\n");
     return -1;
   }
 
   ilock(ip);
-  if (ip->uid != myproc()->uid)
+  if (ip->uid != myproc()->uid && myproc()->uid != 0)
   {
     iunlockput(ip);
     end_op();

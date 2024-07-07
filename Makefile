@@ -138,8 +138,11 @@ UPROGS=\
 	$U/_prime\
 	$U/_pwd\
 	$U/_chkopndfd\
-	$U/_login \
-	$U/_adduser
+	$U/_login\
+	$U/_adduser\
+	$U/_chmod\
+	$U/_chown\
+	$U/_whoami
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)

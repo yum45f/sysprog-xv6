@@ -748,14 +748,12 @@ int checkfperm(struct inode *ip, ushort req)
     return 0;
 
   if (p->uid != ip->uid)
-    req = req >> 3;
+    req <<= 3;
   else
-    req = req >> 6;
+    req <<= 6;
 
   if ((ip->mode & req) == req)
-  {
     return 0;
-  }
 
   return -1;
 }
