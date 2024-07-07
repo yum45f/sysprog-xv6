@@ -56,7 +56,6 @@ void main()
     userinit(); // first user process
     __sync_synchronize();
     started = 1;
-    printf("CPU 0 initialization complete\n");
   }
   else
   {

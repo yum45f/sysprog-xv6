@@ -25,8 +25,8 @@ int sys_login(void)
     return -1;
   }
 
-  struct proc *p = myproc();
-  p->uid = result;
+  myproc()->uid = result;
+  printf("proc uid switched to %d\n", myproc()->uid);
   return 0;
 }
 
@@ -56,8 +56,35 @@ int sys_reloadusrs(void)
   return loadusrs();
 }
 
-int sys_getuid(void)
+// return 0 on success
+// return -1 on failure
+// passwrod won't be copied back
+int sys_getusr(void)
 {
+  struct user *u = (struct user *)kalloc();
+  uint64 uaddr;
+
+  argaddr(0, &uaddr);
   struct proc *p = myproc();
-  return p->uid;
+
+  int r = getusr(p->uid, u);
+  if (r < 0)
+  {
+    kfree(u);
+    printf("getusr: user not found\n");
+    return -1;
+  }
+
+  // delete password
+  memset(u->password, 0, MAX_PASSWORD);
+
+  if (copyout(p->pagetable, uaddr, (char *)u, sizeof(u)) < 0)
+  {
+    kfree(u);
+    printf("getusr: failed to copyout\n");
+    return -1;
+  }
+
+  kfree(u);
+  return 0;
 }

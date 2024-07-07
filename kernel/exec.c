@@ -39,6 +39,13 @@ int exec(char *path, char **argv)
   }
   ilock(ip);
 
+  // check sufficient permissions
+  if (checkfperm(ip, 0111) < 0)
+  {
+    printf("exec: insufficient permissions\n");
+    goto bad;
+  }
+
   // Check ELF header
   if (readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;

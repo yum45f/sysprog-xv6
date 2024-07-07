@@ -226,6 +226,7 @@ uint ialloc(ushort type)
   din.type = xshort(type);
   din.nlink = xshort(1);
   din.size = xint(0);
+  din.mode = xshort(0755);
   winode(inum, &din);
   return inum;
 }
@@ -295,6 +296,7 @@ void iappend(uint inum, void *xp, int n)
     p += n1;
   }
   din.size = xint(off);
+  din.mode = xshort(0755);
   winode(inum, &din);
 }
 

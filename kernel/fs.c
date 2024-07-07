@@ -20,6 +20,7 @@
 #include "fs.h"
 #include "buf.h"
 #include "file.h"
+#include "fcntl.h"
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 // there should be one superblock per disk device, but we run with
@@ -240,6 +241,8 @@ void iupdate(struct inode *ip)
   dip->minor = ip->minor;
   dip->nlink = ip->nlink;
   dip->size = ip->size;
+  dip->uid = ip->uid;
+  dip->mode = ip->mode;
   memmove(dip->addrs, ip->addrs, sizeof(ip->addrs));
   log_write(bp);
   brelse(bp);
@@ -315,6 +318,8 @@ void ilock(struct inode *ip)
     ip->minor = dip->minor;
     ip->nlink = dip->nlink;
     ip->size = dip->size;
+    ip->uid = dip->uid;
+    ip->mode = dip->mode;
     memmove(ip->addrs, dip->addrs, sizeof(ip->addrs));
     brelse(bp);
     ip->valid = 1;
@@ -721,17 +726,36 @@ nameiparent(char *path, char *name)
   return namex(path, 1, name);
 }
 
-int checkfperm(struct inode *ip, int mode)
+// permissions for int16 mode
+// check file permission for operation
+// 16 bit pattern for mode (read from left to right):
+//   - skip 4 bits: 0 padding
+//   - next 3 bits: owner's permission
+//   - 3rd 3 bits: other's permission
+//   - last 3 bits: reserved for future use
+//
+// in each 3 bits (from left to right):
+//   - 1st bit: execute permission
+//   - 2nd bit: write permission
+//   - 3rd bit: read permission
+//
+// return 0 if permission is granted, -1 if not
+int checkfperm(struct inode *ip, ushort req)
 {
   struct proc *p = myproc();
+
   if (p->uid == 0)
     return 0;
 
   if (p->uid != ip->uid)
-    return -1;
+    req = req >> 3;
+  else
+    req = req >> 6;
 
-  if ((ip->mode & mode) == mode)
-    return -1;
+  if ((ip->mode & req) == req)
+  {
+    return 0;
+  }
 
-  return 0;
+  return -1;
 }

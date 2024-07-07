@@ -54,7 +54,7 @@ int readi(struct inode *, int, uint64, uint, uint);
 void stati(struct inode *, struct stat *);
 int writei(struct inode *, int, uint64, uint, uint);
 void itrunc(struct inode *);
-int checkfperm(struct inode *, int);
+int checkfperm(struct inode *, ushort);
 
 // ramdisk.c
 void ramdiskinit(void);
@@ -194,5 +194,7 @@ void virtio_disk_intr(void);
 int loadusrs();
 int saveusrs();
 int addusr(char[32], char[64]);
-int getusr(char[32], struct user *);
+int getusr(int, struct user *);
+int getuid(char[32]);
+int getusername(int, char[32]);
 int usrauthenticate(char[32], char[64]);

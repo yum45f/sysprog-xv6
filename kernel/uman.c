@@ -29,7 +29,6 @@ int create_savefile()
     return -1;
   }
 
-  int found = 0;
   for (int off = 0; off < root->size; off += sizeof(de))
   {
     if (readi(root, 0, (uint64)&de, off, sizeof(de)) != sizeof(de))
@@ -44,7 +43,6 @@ int create_savefile()
     if (strncmp(de.name, "..", DIRSIZ) == 0)
       continue;
 
-    // skip empty name entries
     if (de.name[0] == 0)
       continue;
 
@@ -53,43 +51,14 @@ int create_savefile()
 
     if (strncmp(de.name, "users", DIRSIZ) == 0)
     {
-      printf("users savefile found\n");
-      found = 1;
-      continue;
-    }
-
-    char name[DIRSIZ + 1];
-    name[0] = '/';
-    strncpy(name + 1, de.name, DIRSIZ);
-
-    struct inode *i = namei(name);
-    if (i == 0)
-    {
       end_op();
-      printf("failed to get inode\n");
-      return -1;
+      return 0;
     }
-
-    ilock(i);
-
-    if (i->type != T_FILE)
-    {
-      iunlockput(i);
-      continue;
-    }
-
-    i->mode = 0777;
-    iupdate(i);
-    iunlockput(i);
   }
 
-  if (found)
-  {
-    end_op();
-    return 0;
-  }
-
+  printf("users savefile not found\n");
   printf("creating users savefile\n");
+
   ip = ialloc(root->dev, T_FILE);
   if (ip == 0)
   {
@@ -106,6 +75,7 @@ int create_savefile()
   ip->size = 0;
   ip->uid = 0;
   ip->type = T_FILE;
+  ip->mode = 0600;
 
   iupdate(ip);
 
@@ -203,18 +173,10 @@ int loadusrs()
   iunlockput(ip);
   end_op();
 
-  for (int i = 0; i < MAX_USERS; i++)
-  {
-    if (users[i].status == USER_ACTIVE)
-    {
-      printf("user: %s\n", users[i].username);
-    }
-  }
-
   return r;
 }
 
-int getusr(char username[MAX_USERNAME], struct user *user)
+int getusr(int uid, struct user *user)
 {
   if (loadusrs() < 0)
   {
@@ -227,7 +189,7 @@ int getusr(char username[MAX_USERNAME], struct user *user)
     if (users[i].status == USER_INACTIVE)
       continue;
 
-    if (strncmp(users[i].username, username, MAX_USERNAME) == 0)
+    if (users[i].uid == uid)
     {
       *user = users[i];
       return 0;
@@ -240,11 +202,10 @@ int getusr(char username[MAX_USERNAME], struct user *user)
 // return uid on success or -1 on failure
 int usrauthenticate(char username[MAX_USERNAME], char password[MAX_PASSWORD])
 {
-  printf("authenticating user %s\n", username);
   struct user *u = (struct user *)kalloc();
-  if (getusr(username, u) < 0)
+  if (getusr(getuid(username), u) < 0)
   {
-    printf("user not found\n");
+    printf("failed to get user\n");
     kfree((char *)u);
     return -1;
   }
@@ -255,11 +216,10 @@ int usrauthenticate(char username[MAX_USERNAME], char password[MAX_PASSWORD])
     return -1;
   }
 
-  printf("uid: %d\n", u->uid);
-  printf("username: %d\n", strncmp(u->username, username, MAX_USERNAME));
-  printf("password: %d\n", strncmp(u->password, password, MAX_PASSWORD));
+  printf("length of u->password: %d\n", strlen(u->password));
+  printf("length of password: %d\n", strlen(password));
 
-  if (strncmp(u->password, password, MAX_PASSWORD) == 0)
+  if (strlen(u->password) == strlen(password) && strncmp(u->password, password, MAX_PASSWORD) == 0)
   {
     int uid = u->uid;
     kfree((char *)u);
@@ -291,8 +251,6 @@ int addusr(char username[MAX_USERNAME], char password[MAX_PASSWORD])
     u->status = USER_ACTIVE;
     strncpy(u->username, username, MAX_USERNAME);
     strncpy(u->password, password, MAX_PASSWORD);
-
-    printf("usr %s %d %d\n", users[0].username, users[0].uid, users[0].status);
 
     if (saveusrs() < 0)
     {
